@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BISCAST Student Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F2EFE6;
+    --paper: #FBFAF6;
+    --ink: #1B2A2E;
+    --ink-soft: #4E5C5E;
+    --teal: #2F5D62;
+    --teal-deep: #1B2A2E;
+    --gold: #C9A227;
+    --rust: #B4462F;
+    --line: #D8D2C2;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .skip-link:focus {
+    position: fixed; top: 8px; left: 8px; z-index: 100;
+    background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 6px;
+  }
+  header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+  }
+  header .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--teal);
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header p.sub {
+    color: var(--ink-soft);
+    margin: 8px 0 0;
+    font-size: 15px;
+    max-width: 46ch;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  main { padding: 24px; }
+  .toolbar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .toolbar button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .toolbar button[aria-pressed="true"] {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: #fff;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card .seller {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .card h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0;
+    line-height: 1.25;
+  }
+  .card .cat {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .tag {
+    align-self: flex-start;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--ink);
+    background: #F5E6A8;
+    border: 1px dashed var(--gold);
+    border-radius: 6px;
+    padding: 3px 10px 3px 8px;
+    position: relative;
+  }
+  .tag::before {
+    content: '';
+    position: absolute;
+    left: -5px; top: 50%; transform: translateY(-50%);
+    width: 8px; height: 8px;
+    background: var(--bg);
+    border: 1px dashed var(--gold);
+    border-radius: 50%;
+  }
+  .stock { font-size: 12px; color: var(--ink-soft); }
+  .stock.low { color: var(--rust); }
+  .card button.add {
+    margin-top: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 9px 12px;
+    background: var(--teal-deep);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .card button.add:disabled {
+    background: var(--line);
+    color: var(--ink-soft);
+    cursor: not-allowed;
+  }
+  .card button.add:focus-visible,
+  .toolbar button:focus-visible,
+  .qty button:focus-visible,
+  .slip button:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+  .empty, .loading {
+    grid-column: 1/-1;
+    color: var(--ink-soft);
+    font-size: 14px;
+    padding: 40px 0;
+    text-align: center;
+  }
+
+  /* Order slip / cart */
+  aside.slip {
+    background: var(--paper);
+    border-left: 1px solid var(--line);
+    min-height: 100vh;
+    padding: 24px 20px 40px;
+    position: sticky;
+    top: 0;
+  }
+  @media (max-width: 860px) {
+    aside.slip { min-height: auto; position: static; border-left: none; border-top: 1px solid var(--line); }
+  }
+  .slip h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  .slip .slip-note { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 16px; }
+  .seller-group { margin-bottom: 16px; }
+  .seller-group .seller-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--teal);
+    margin-bottom: 6px;
+  }
+  .line-item {
+    display: flex; align-items: baseline; gap: 6px;
+    font-size: 14px; padding: 4px 0;
+  }
+  .line-item .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .line-item .fill {
+    flex: 1;
+    border-bottom: 1px dotted var(--line);
+    margin-bottom: 3px;
+    min-width: 8px;
+  }
+  .line-item .price { font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; white-space: nowrap; }
+  .qty {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  }
+  .qty button {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 1px solid var(--line); background: var(--bg);
+    cursor: pointer; line-height: 1;
+  }
+  .subtotal {
+    text-align: right; font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px; color: var(--ink-soft); margin-top: 4px;
+  }
+  .slip-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-top: 1px solid var(--ink); padding-top: 12px; margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 500;
+  }
+  .slip-edge {
+    height: 10px;
+    margin: 16px -20px 16px;
+    background-image: linear-gradient(135deg, var(--bg) 50%, transparent 50%), linear-gradient(45deg, var(--bg) 50%, transparent 50%);
+    background-size: 14px 14px;
+    background-position: bottom;
+    background-repeat: repeat-x;
+  }
+  .buyer-form { display: flex; flex-direction: column; gap: 10px; }
+  .buyer-form label { font-size: 12.5px; color: var(--ink-soft); display: block; margin-bottom: 3px; }
+  .buyer-form input, .buyer-form select {
+    width: 100%; padding: 9px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--bg);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+  }
+  .buyer-form input:focus, .buyer-form select:focus {
+    outline: 2px solid var(--teal); outline-offset: 1px;
+  }
+  button.place-order {
+    margin-top: 8px;
+    background: var(--rust); color: #fff;
+    border: none; border-radius: 7px;
+    padding: 12px; font-size: 15px; font-weight: 600;
+    font-family: 'IBM Plex Sans', sans-serif;
+    cursor: pointer;
+  }
+  button.place-order:disabled { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+  .msg { font-size: 13px; padding: 10px 12px; border-radius: 7px; margin-top: 10px; }
+  .msg.err { background: #F6DED6; color: var(--rust); }
+  .msg.ok { background: #E4EEE1; color: #2E6B3E; }
+  .confirm h3 { font-family: 'Fraunces', serif; font-size: 19px; margin: 0 0 8px; }
+  .confirm p { font-size: 13.5px; color: var(--ink-soft); margin: 4px 0; }
+  .confirm .oid { font-family: 'IBM Plex Mono', monospace; color: var(--ink); }
+  .confirm button { margin-top: 12px; }
+</style>
+</head>
+<body>
+<a href="#catalog" class="skip-link">Skip to product list</a>
+
+<header>
+  <p class="eyebrow">BISCAST &middot; Student Development Services</p>
+  <h1>Student Marketplace</h1>
+  <p class="sub">Real products from entrepreneurship students. Every order supports coursework, not just a sale.</p>
+</header>
+
+<div class="layout">
+  <main id="catalog">
+    <div class="toolbar" id="categoryFilters" role="group" aria-label="Filter by category"></div>
+    <div class="grid" id="productGrid">
+      <p class="loading">Loading products&hellip;</p>
+    </div>
+  </main>
+
+  <aside class="slip" aria-label="Your order">
+    <div id="slipContent"></div>
+  </aside>
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────
+  const CONFIG = {
+    ENDPOINT: 'https://script.google.com/macros/s/AKfycbyqdUcG5bg8rsKYoLXZhnql1uHyqySKsy23HgOnfZYm9pigEWj5MEXSC2zceuH1z6Ff/exec'
+  };
+
+  // ── STATE ───────────────────────────────────────────────────────────
+  let products = [];
+  let activeCategory = null;
+  let cart = JSON.parse(localStorage.getItem('biscast_cart') || '{}'); // { product_id: qty }
+  let orderResult = null; // set after a successful checkout
+
+  const peso = n => '\u20b1' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+
+  function saveCart() {
+    localStorage.setItem('biscast_cart', JSON.stringify(cart));
+  }
+
+  // ── LOAD PRODUCTS ───────────────────────────────────────────────────
+  async function loadProducts() {
+    try {
+      const res = await fetch(`${CONFIG.ENDPOINT}?action=listProducts`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      products = data;
+      renderCategoryFilters();
+      renderGrid();
+    } catch (err) {
+      document.getElementById('productGrid').innerHTML =
+        `<p class="empty">Couldn't load products right now. ${escapeHtml(err.message)}</p>`;
+    }
+    renderSlip();
+  }
+
+  function renderCategoryFilters() {
+    const cats = [...new Set(products.map(p => p.category).filter(Boolean))];
+    const el = document.getElementById('categoryFilters');
+    if (cats.length === 0) { el.innerHTML = ''; return; }
+    el.innerHTML = ['All', ...cats].map(c => {
+      const isAll = c === 'All';
+      const pressed = isAll ? activeCategory === null : activeCategory === c;
+      return `<button aria-pressed="${pressed}" data-cat="${isAll ? '' : escapeAttr(c)}">${escapeHtml(c)}</button>`;
+    }).join('');
+    el.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.dataset.cat || null;
+        renderCategoryFilters();
+        renderGrid();
+      });
+    });
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('productGrid');
+    const visible = activeCategory ? products.filter(p => p.category === activeCategory) : products;
+    if (visible.length === 0) {
+      grid.innerHTML = '<p class="empty">No products listed yet. Check back once sellers are approved.</p>';
+      return;
+    }
+    grid.innerHTML = visible.map(p => {
+      const inCart = cart[p.product_id] || 0;
+      const remaining = Number(p.stock) - inCart;
+      const low = remaining > 0 && remaining <= 2;
+      return `
+        <article class="card">
+          <p class="seller">${escapeHtml(p.seller_name || p.seller_id)}</p>
+          <h3>${escapeHtml(p.name)}</h3>
+          <p class="cat">${escapeHtml(p.category || '')}</p>
+          <span class="tag">${peso(p.price)}</span>
+          <p class="stock ${low ? 'low' : ''}">${remaining > 0 ? remaining + ' left' : 'Sold out'}</p>
+          <button class="add" data-id="${escapeAttr(p.product_id)}" ${remaining <= 0 ? 'disabled' : ''}>
+            ${remaining <= 0 ? 'Sold out' : 'Add to cart'}
+          </button>
+        </article>`;
+    }).join('');
+    grid.querySelectorAll('button.add').forEach(btn => {
+      btn.addEventListener('click', () => addToCart(btn.dataset.id));
+    });
+  }
+
+  function addToCart(productId) {
+    const product = products.find(p => p.product_id === productId);
+    const current = cart[productId] || 0;
+    if (current >= Number(product.stock)) return;
+    cart[productId] = current + 1;
+    saveCart();
+    renderGrid();
+    renderSlip();
+  }
+
+  function changeQty(productId, delta) {
+    const product = products.find(p => p.product_id === productId);
+    const next = (cart[productId] || 0) + delta;
+    if (next <= 0) { delete cart[productId]; }
+    else if (product && next > Number(product.stock)) { return; }
+    else { cart[productId] = next; }
+    saveCart();
+    renderGrid();
+    renderSlip();
+  }
+
+  // ── ORDER SLIP ──────────────────────────────────────────────────────
+  function renderSlip() {
+    const el = document.getElementById('slipContent');
+
+    if (orderResult) {
+      el.innerHTML = `
+        <div class="confirm">
+          <h3>Order placed</h3>
+          <p>Order <span class="oid">${escapeHtml(orderResult.order_id)}</span></p>
+          <p>Total: ${peso(orderResult.order_total)}</p>
+          <p>${orderResult.sub_orders} seller${orderResult.sub_orders === 1 ? '' : 's'} will prepare your items. Show your order number at pickup.</p>
+          <button class="place-order" id="newOrderBtn">Start a new order</button>
+        </div>`;
+      document.getElementById('newOrderBtn').addEventListener('click', () => {
+        orderResult = null;
+        cart = {};
+        saveCart();
+        renderGrid();
+        renderSlip();
+      });
+      return;
+    }
+
+    const items = Object.entries(cart)
+      .map(([id, qty]) => ({ product: products.find(p => p.product_id === id), qty }))
+      .filter(l => l.product);
+
+    const bySeller = {};
+    items.forEach(l => {
+      const key = l.product.seller_name || l.product.seller_id;
+      (bySeller[key] = bySeller[key] || []).push(l);
+    });
+
+    const total = items.reduce((sum, l) => sum + l.qty * Number(l.product.price), 0);
+
+    const groupsHtml = Object.keys(bySeller).length === 0
+      ? '<p class="slip-note">Your cart is empty. Add something from the catalog.</p>'
+      : Object.entries(bySeller).map(([seller, lines]) => {
+          const subtotal = lines.reduce((s, l) => s + l.qty * Number(l.product.price), 0);
+          return `
+            <div class="seller-group">
+              <p class="seller-label">${escapeHtml(seller)}</p>
+              ${lines.map(l => `
+                <div class="line-item">
+                  <span class="name">${escapeHtml(l.product.name)}</span>
+                  <span class="fill"></span>
+                  <span class="qty">
+                    <button type="button" data-id="${escapeAttr(l.product.product_id)}" data-delta="-1" aria-label="Remove one ${escapeAttr(l.product.name)}">&minus;</button>
+                    ${l.qty}
+                    <button type="button" data-id="${escapeAttr(l.product.product_id)}" data-delta="1" aria-label="Add one more ${escapeAttr(l.product.name)}">+</button>
+                  </span>
+                  <span class="price">${peso(l.qty * l.product.price)}</span>
+                </div>`).join('')}
+              <p class="subtotal">Subtotal ${peso(subtotal)}</p>
+            </div>`;
+        }).join('<div class="slip-edge"></div>');
+
+    el.innerHTML = `
+      <h2>Order slip</h2>
+      <p class="slip-note">${Object.keys(bySeller).length > 1 ? 'Split across ' + Object.keys(bySeller).length + ' sellers at checkout.' : 'One seller, one pickup.'}</p>
+      ${groupsHtml}
+      ${items.length > 0 ? `<div class="slip-total"><span>Total</span><span>${peso(total)}</span></div>` : ''}
+      ${items.length > 0 ? buyerFormHtml() : ''}
+      <div id="checkoutMsg"></div>
+    `;
+
+    el.querySelectorAll('.qty button').forEach(btn => {
+      btn.addEventListener('click', () => changeQty(btn.dataset.id, Number(btn.dataset.delta)));
+    });
+    if (items.length > 0) {
+      document.getElementById('checkoutForm').addEventListener('submit', submitCheckout);
+    }
+  }
+
+  function buyerFormHtml() {
+    return `
+      <div class="slip-edge"></div>
+      <form class="buyer-form" id="checkoutForm">
+        <div>
+          <label for="buyerName">Name</label>
+          <input id="buyerName" required autocomplete="name">
+        </div>
+        <div>
+          <label for="buyerContact">Contact number</label>
+          <input id="buyerContact" required inputmode="tel" autocomplete="tel" placeholder="09XXXXXXXXX">
+        </div>
+        <div>
+          <label for="buyerType">You are a</label>
+          <select id="buyerType">
+            <option value="student">Student</option>
+            <option value="staff">Staff / Faculty</option>
+            <option value="alumni">Alumni</option>
+            <option value="public">Visitor</option>
+          </select>
+        </div>
+        <button type="submit" class="place-order">Place order</button>
+      </form>`;
+  }
+
+  async function submitCheckout(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = 'Placing order\u2026';
+
+    const payload = {
+      action: 'checkout',
+      idempotency_key: crypto.randomUUID(),
+      buyer: {
+        name: document.getElementById('buyerName').value.trim(),
+        contact: document.getElementById('buyerContact').value.trim(),
+        buyer_type: document.getElementById('buyerType').value
+      },
+      cart: Object.entries(cart).map(([product_id, qty]) => ({ product_id, qty }))
+    };
+
+    try {
+      const res = await fetch(CONFIG.ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      orderResult = data;
+      await loadProducts(); // refresh stock counts
+      renderSlip();
+    } catch (err) {
+      document.getElementById('checkoutMsg').innerHTML =
+        `<p class="msg err">${escapeHtml(err.message)}</p>`;
+      btn.disabled = false;
+      btn.textContent = 'Place order';
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function escapeAttr(str) { return escapeHtml(str); }
+
+  loadProducts();
+</script>
+</body>
+</html>
