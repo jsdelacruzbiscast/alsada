@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BISCAST Marketplace — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F2EFE6; --paper: #FBFAF6; --ink: #1B2A2E; --ink-soft: #4E5C5E;
+    --teal: #2F5D62; --teal-deep: #1B2A2E; --gold: #C9A227; --rust: #B4462F;
+    --green: #2E6B3E; --line: #D8D2C2; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+  header { padding: 24px; border-bottom: 1px solid var(--line); background: var(--paper); }
+  header .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .08em; color: var(--teal); text-transform: uppercase; margin: 0 0 6px; }
+  header h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(24px,3.5vw,32px); margin: 0; }
+  nav.tabs { display: flex; gap: 8px; padding: 16px 24px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+  nav.tabs button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 10px 16px;
+    border: none; background: none; color: var(--ink-soft); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button.active { color: var(--ink); border-bottom-color: var(--rust); font-weight: 600; }
+  main { max-width: 780px; margin: 0 auto; padding: 28px 20px 60px; }
+  section { display: none; }
+  section.active { display: block; }
+
+  .panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .panel h2 { font-family: 'Fraunces', serif; font-size: 19px; margin: 0 0 4px; }
+  .panel .hint { font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; }
+
+  label { display: block; font-size: 12.5px; color: var(--ink-soft); margin: 10px 0 4px; }
+  input, select {
+    width: 100%; padding: 9px 10px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--bg); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button.primary {
+    margin-top: 14px; background: var(--teal-deep); color: #fff; border: none;
+    border-radius: 7px; padding: 11px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+  button.ghost {
+    background: none; border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 10px; font-size: 12.5px; cursor: pointer; color: var(--ink);
+  }
+  button.approve { background: var(--green); color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+
+  .msg { font-size: 13px; padding: 10px 12px; border-radius: 7px; margin-top: 12px; }
+  .msg.err { background: #F6DED6; color: var(--rust); }
+  .msg.ok { background: #E4EEE1; color: var(--green); }
+
+  .badge { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
+  .badge.pending { background: #F5E6A8; color: #7A5E00; }
+  .badge.approved { background: #DCEBDD; color: var(--green); }
+  .badge.submitted { background: #F5E6A8; color: #7A5E00; }
+  .badge.verified { background: #DCEBDD; color: var(--green); }
+  .badge.fulfilled { background: #DCEBDD; color: var(--green); }
+  .badge.ready { background: #DCE5F0; color: #2C4A73; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  th { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+  td.num { font-family: 'IBM Plex Mono', monospace; }
+  .empty-row td { color: var(--ink-soft); text-align: center; padding: 20px 0; }
+
+  .status-select { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 4px 6px; width: auto; }
+  .divider { height: 1px; background: var(--line); margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">BISCAST &middot; Student Development Services</p>
+  <h1>Marketplace Dashboard</h1>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="seller" class="active" aria-selected="true">Seller</button>
+  <button role="tab" data-tab="admin" aria-selected="false">Admin</button>
+</nav>
+
+<main>
+  <!-- SELLER TAB -->
+  <section id="tab-seller" class="active">
+    <div class="panel">
+      <h2>Your dashboard</h2>
+      <p class="hint">Enter the seller ID you received when your team registered.</p>
+      <label for="sellerIdInput">Seller ID</label>
+      <input id="sellerIdInput" placeholder="SEL-xxxxxxxx">
+      <button class="primary" id="loadSellerBtn">Load dashboard</button>
+      <div id="sellerMsg"></div>
+    </div>
+
+    <div id="sellerContent"></div>
+
+    <div class="panel">
+      <h2>Register a new team</h2>
+      <p class="hint">One-time setup. Your listings won't go live until an adviser approves your team.</p>
+      <label for="regTeam">Team name</label>
+      <input id="regTeam" placeholder="e.g. Sundried Mango Co.">
+      <label for="regAdviser">Adviser</label>
+      <input id="regAdviser" placeholder="e.g. Prof. Dela Cruz">
+      <label for="regPayout">Payout method</label>
+      <input id="regPayout" placeholder="e.g. GCash 09XXXXXXXXX">
+      <button class="primary" id="registerBtn">Register team</button>
+      <div id="registerMsg"></div>
+    </div>
+  </section>
+
+  <!-- ADMIN TAB -->
+  <section id="tab-admin">
+    <div class="panel">
+      <h2>Admin access</h2>
+      <p class="hint">Enter the shared admin passcode set in Code.gs.</p>
+      <label for="adminKeyInput">Admin passcode</label>
+      <input id="adminKeyInput" type="password">
+      <button class="primary" id="loadAdminBtn">Load admin queues</button>
+      <div id="adminMsg"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Pending seller approvals</h2>
+      <p class="hint">Approve a team so their products go live in the catalog.</p>
+      <table>
+        <thead><tr><th>Team</th><th>Adviser</th><th>Seller ID</th><th></th></tr></thead>
+        <tbody id="pendingSellersBody"><tr class="empty-row"><td colspan="4">Load admin queues to see pending sellers.</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Payments to verify</h2>
+      <p class="hint">Mark a sub-order's payment as verified once proof has been checked.</p>
+      <table>
+        <thead><tr><th>Sub-order</th><th>Seller</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody id="pendingPaymentsBody"><tr class="empty-row"><td colspan="4">Load admin queues to see pending payments.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+  const CONFIG = {
+    ENDPOINT: 'https://script.google.com/macros/s/AKfycbyqdUcG5bg8rsKYoLXZhnql1uHyqySKsy23HgOnfZYm9pigEWj5MEXSC2zceuH1z6Ff/exec'
+  };
+  const peso = n => '\u20b1' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+  function escapeHtml(str) { return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // ── TABS ────────────────────────────────────────────────────────────
+  document.querySelectorAll('nav.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav.tabs button').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── SELLER: register ────────────────────────────────────────────────
+  document.getElementById('registerBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('registerMsg');
+    const team_name = document.getElementById('regTeam').value.trim();
+    const adviser = document.getElementById('regAdviser').value.trim();
+    const payout_method = document.getElementById('regPayout').value.trim();
+    if (!team_name || !adviser) {
+      msg.innerHTML = '<p class="msg err">Team name and adviser are required.</p>';
+      return;
+    }
+    try {
+      const res = await fetch(CONFIG.ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'registerSeller', team_name, adviser, payout_method })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      msg.innerHTML = `<p class="msg ok">Registered! Your seller ID is <strong>${escapeHtml(data.seller_id)}</strong> — save this. Ask your adviser to approve your team, then load your dashboard above.</p>`;
+    } catch (err) {
+      msg.innerHTML = `<p class="msg err">${escapeHtml(err.message)}</p>`;
+    }
+  });
+
+  // ── SELLER: dashboard ───────────────────────────────────────────────
+  const savedSellerId = localStorage.getItem('biscast_seller_id');
+  if (savedSellerId) document.getElementById('sellerIdInput').value = savedSellerId;
+
+  document.getElementById('loadSellerBtn').addEventListener('click', loadSellerDashboard);
+
+  async function loadSellerDashboard() {
+    const sellerId = document.getElementById('sellerIdInput').value.trim();
+    const msg = document.getElementById('sellerMsg');
+    const content = document.getElementById('sellerContent');
+    if (!sellerId) { msg.innerHTML = '<p class="msg err">Enter your seller ID first.</p>'; return; }
+    localStorage.setItem('biscast_seller_id', sellerId);
+    msg.innerHTML = '';
+    try {
+      const res = await fetch(`${CONFIG.ENDPOINT}?action=sellerDashboard&seller_id=${encodeURIComponent(sellerId)}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      renderSellerContent(sellerId, data);
+    } catch (err) {
+      content.innerHTML = '';
+      msg.innerHTML = `<p class="msg err">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  function renderSellerContent(sellerId, data) {
+    const content = document.getElementById('sellerContent');
+    const statusBadge = `<span class="badge ${data.seller.status}">${escapeHtml(data.seller.status)}</span>`;
+
+    let html = `
+      <div class="panel">
+        <h2>${escapeHtml(data.seller.team_name)} ${statusBadge}</h2>
+        <p class="hint">Adviser: ${escapeHtml(data.seller.adviser)}</p>
+      </div>`;
+
+    if (data.seller.status !== 'approved') {
+      html += `<div class="panel"><p class="msg err" style="margin-top:0">Your team isn't approved yet. Products can't be listed until your adviser approves you.</p></div>`;
+    } else {
+      html += `
+        <div class="panel">
+          <h2>Add a product</h2>
+          <label for="pName">Name</label>
+          <input id="pName">
+          <div class="row">
+            <div><label for="pCategory">Category</label><input id="pCategory" placeholder="e.g. Food"></div>
+            <div><label for="pPrice">Price (\u20b1)</label><input id="pPrice" type="number" min="1"></div>
+            <div><label for="pStock">Stock</label><input id="pStock" type="number" min="0" step="1"></div>
+          </div>
+          <button class="primary" id="addProductBtn">Add product</button>
+          <div id="addProductMsg"></div>
+        </div>`;
+    }
+
+    html += `
+      <div class="panel">
+        <h2>Your products</h2>
+        <table>
+          <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th></tr></thead>
+          <tbody>
+            ${data.products.length ? data.products.map(p => `
+              <tr><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.category || '')}</td><td class="num">${peso(p.price)}</td><td class="num">${p.stock}</td></tr>
+            `).join('') : '<tr class="empty-row"><td colspan="4">No products listed yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>Incoming orders</h2>
+        <table>
+          <thead><tr><th>Sub-order</th><th>Payment</th><th>Subtotal</th><th>Status</th></tr></thead>
+          <tbody>
+            ${data.sub_orders.length ? data.sub_orders.map(s => `
+              <tr>
+                <td>${escapeHtml(s.sub_order_id)}</td>
+                <td><span class="badge ${s.payment_status}">${escapeHtml(s.payment_status)}</span></td>
+                <td class="num">${peso(s.subtotal)}</td>
+                <td>
+                  <select class="status-select" data-sub-order="${escapeHtml(s.sub_order_id)}">
+                    ${['pending','ready','fulfilled','cancelled'].map(opt => `<option value="${opt}" ${opt === s.status ? 'selected' : ''}>${opt}</option>`).join('')}
+                  </select>
+                </td>
+              </tr>
+            `).join('') : '<tr class="empty-row"><td colspan="4">No orders yet.</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+
+    content.innerHTML = html;
+
+    const addBtn = document.getElementById('addProductBtn');
+    if (addBtn) addBtn.addEventListener('click', () => addProduct(sellerId));
+
+    content.querySelectorAll('.status-select').forEach(sel => {
+      sel.addEventListener('change', () => updateSubOrderStatus(sellerId, sel.dataset.subOrder, sel.value));
+    });
+  }
+
+  async function addProduct(sellerId) {
+    const msg = document.getElementById('addProductMsg');
+    const name = document.getElementById('pName').value.trim();
+    const category = document.getElementById('pCategory').value.trim();
+    const price = document.getElementById('pPrice').value;
+    const stock = document.getElementById('pStock').value;
+    try {
+      const res = await fetch(CONFIG.ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'addProduct', seller_id: sellerId, name, category, price, stock })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      msg.innerHTML = '<p class="msg ok">Product added.</p>';
+      loadSellerDashboard();
+    } catch (err) {
+      msg.innerHTML = `<p class="msg err">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  async function updateSubOrderStatus(sellerId, subOrderId, status) {
+    try {
+      const res = await fetch(CONFIG.ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'updateSubOrderStatus', seller_id: sellerId, sub_order_id: subOrderId, status })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+    } catch (err) {
+      alert('Could not update status: ' + err.message);
+      loadSellerDashboard();
+    }
+  }
+
+  // ── ADMIN ───────────────────────────────────────────────────────────
+  const savedAdminKey = sessionStorage.getItem('biscast_admin_key');
+  if (savedAdminKey) document.getElementById('adminKeyInput').value = savedAdminKey;
+
+  document.getElementById('loadAdminBtn').addEventListener('click', loadAdminQueues);
+
+  async function loadAdminQueues() {
+    const key = document.getElementById('adminKeyInput').value;
+    const msg = document.getElementById('adminMsg');
+    if (!key) { msg.innerHTML = '<p class="msg err">Enter the admin passcode.</p>'; return; }
+    sessionStorage.setItem('biscast_admin_key', key);
+    msg.innerHTML = '';
+    try {
+      const [sellersRes, paymentsRes] = await Promise.all([
+        fetch(`${CONFIG.ENDPOINT}?action=adminSellers&admin_key=${encodeURIComponent(key)}`).then(r => r.json()),
+        fetch(`${CONFIG.ENDPOINT}?action=adminPayments&admin_key=${encodeURIComponent(key)}`).then(r => r.json())
+      ]);
+      if (sellersRes.error) throw new Error(sellersRes.error);
+      if (paymentsRes.error) throw new Error(paymentsRes.error);
+      renderPendingSellers(sellersRes.filter(s => s.status === 'pending'), key);
+      renderPendingPayments(paymentsRes, key);
+      msg.innerHTML = '<p class="msg ok">Queues loaded.</p>';
+    } catch (err) {
+      msg.innerHTML = `<p class="msg err">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  function renderPendingSellers(sellers, adminKey) {
+    const body = document.getElementById('pendingSellersBody');
+    if (sellers.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="4">No sellers awaiting approval.</td></tr>';
+      return;
+    }
+    body.innerHTML = sellers.map(s => `
+      <tr>
+        <td>${escapeHtml(s.team_name)}</td>
+        <td>${escapeHtml(s.adviser)}</td>
+        <td><span style="font-family:'IBM Plex Mono',monospace;font-size:12px">${escapeHtml(s.seller_id)}</span></td>
+        <td><button class="approve" data-id="${escapeHtml(s.seller_id)}">Approve</button></td>
+      </tr>`).join('');
+    body.querySelectorAll('.approve').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Approving\u2026';
+        try {
+          const res = await fetch(CONFIG.ENDPOINT, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'approveSeller', seller_id: btn.dataset.id, admin_key: adminKey })
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          loadAdminQueues();
+        } catch (err) {
+          alert('Could not approve: ' + err.message);
+          btn.disabled = false; btn.textContent = 'Approve';
+        }
+      });
+    });
+  }
+
+  function renderPendingPayments(payments, adminKey) {
+    const body = document.getElementById('pendingPaymentsBody');
+    if (payments.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="4">No payments awaiting verification.</td></tr>';
+      return;
+    }
+    body.innerHTML = payments.map(s => `
+      <tr>
+        <td>${escapeHtml(s.sub_order_id)}</td>
+        <td>${escapeHtml(s.seller_name)}</td>
+        <td class="num">${peso(s.subtotal)}</td>
+        <td><button class="approve" data-id="${escapeHtml(s.sub_order_id)}">Verify</button></td>
+      </tr>`).join('');
+    body.querySelectorAll('.approve').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Verifying\u2026';
+        try {
+          const res = await fetch(CONFIG.ENDPOINT, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'verifyPayment', sub_order_id: btn.dataset.id, admin_key: adminKey })
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          loadAdminQueues();
+        } catch (err) {
+          alert('Could not verify: ' + err.message);
+          btn.disabled = false; btn.textContent = 'Verify';
+        }
+      });
+    });
+  }
+
+  if (savedSellerId) loadSellerDashboard();
+</script>
+</body>
+</html>
