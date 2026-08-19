@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BISCAST Marketplace — Dashboard</title>
+<link rel="icon" type="image/png" href="sds-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -14,7 +15,8 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; }
-  header { padding: 24px; border-bottom: 1px solid var(--line); background: var(--paper); }
+  header { padding: 24px; border-bottom: 1px solid var(--line); background: var(--paper); display: flex; align-items: center; gap: 14px; }
+  header .logo { width: 44px; height: 44px; flex-shrink: 0; }
   header .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: .08em; color: var(--teal); text-transform: uppercase; margin: 0 0 6px; }
   header h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(24px,3.5vw,32px); margin: 0; }
   nav.tabs { display: flex; gap: 8px; padding: 16px 24px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -76,8 +78,11 @@
 <body>
 
 <header>
-  <p class="eyebrow">BISCAST &middot; Student Development Services</p>
-  <h1>Marketplace Dashboard</h1>
+  <img src="sds-logo.png" alt="BISCAST Student Development Services logo" class="logo">
+  <div>
+    <p class="eyebrow">BISCAST &middot; Student Development Services</p>
+    <h1>Marketplace Dashboard</h1>
+  </div>
 </header>
 
 <nav class="tabs" role="tablist">
@@ -141,6 +146,15 @@
         <tbody id="pendingPaymentsBody"><tr class="empty-row"><td colspan="4">Load admin queues to see pending payments.</td></tr></tbody>
       </table>
     </div>
+
+    <div class="panel">
+      <h2>Sales dashboard</h2>
+      <p class="hint">Units sold and revenue per team — source data for grading.</p>
+      <table>
+        <thead><tr><th>Team</th><th>Units sold</th><th>Revenue</th><th>Orders</th></tr></thead>
+        <tbody id="salesDashboardBody"><tr class="empty-row"><td colspan="4">Load admin queues to see sales data.</td></tr></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
@@ -148,6 +162,11 @@
   const CONFIG = {
     ENDPOINT: 'https://script.google.com/macros/s/AKfycbyqdUcG5bg8rsKYoLXZhnql1uHyqySKsy23HgOnfZYm9pigEWj5MEXSC2zceuH1z6Ff/exec'
   };
+  let clientToken = localStorage.getItem('biscast_client_token');
+  if (!clientToken) {
+    clientToken = crypto.randomUUID();
+    localStorage.setItem('biscast_client_token', clientToken);
+  }
   const peso = n => '\u20b1' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
   function escapeHtml(str) { return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -175,7 +194,7 @@
     try {
       const res = await fetch(CONFIG.ENDPOINT, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'registerSeller', team_name, adviser, payout_method })
+        body: JSON.stringify({ action: 'registerSeller', client_token: clientToken, team_name, adviser, payout_method })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -228,7 +247,17 @@
           <label for="pName">Name</label>
           <input id="pName">
           <div class="row">
-            <div><label for="pCategory">Category</label><input id="pCategory" placeholder="e.g. Food"></div>
+            <div><label for="pCategory">Category</label>
+              <select id="pCategory">
+                <option>Food</option>
+                <option>Crafts</option>
+                <option>Apparel</option>
+                <option>Beauty & Wellness</option>
+                <option>Digital / Tech</option>
+                <option>Services</option>
+                <option>Other</option>
+              </select>
+            </div>
             <div><label for="pPrice">Price (\u20b1)</label><input id="pPrice" type="number" min="1"></div>
             <div><label for="pStock">Stock</label><input id="pStock" type="number" min="0" step="1"></div>
           </div>
@@ -241,11 +270,16 @@
       <div class="panel">
         <h2>Your products</h2>
         <table>
-          <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th></tr></thead>
+          <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
           <tbody>
             ${data.products.length ? data.products.map(p => `
-              <tr><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.category || '')}</td><td class="num">${peso(p.price)}</td><td class="num">${p.stock}</td></tr>
-            `).join('') : '<tr class="empty-row"><td colspan="4">No products listed yet.</td></tr>'}
+              <tr>
+                <td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.category || '')}</td>
+                <td class="num">${peso(p.price)}</td><td class="num">${p.stock}</td>
+                <td><span class="badge ${p.active === false ? 'pending' : 'approved'}">${p.active === false ? 'paused' : 'active'}</span></td>
+                <td><button class="ghost toggle-active" data-id="${escapeHtml(p.product_id)}" data-active="${p.active === false ? 'true' : 'false'}">${p.active === false ? 'Resume' : 'Pause'}</button></td>
+              </tr>
+            `).join('') : '<tr class="empty-row"><td colspan="6">No products listed yet.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -276,6 +310,24 @@
     const addBtn = document.getElementById('addProductBtn');
     if (addBtn) addBtn.addEventListener('click', () => addProduct(sellerId));
 
+    content.querySelectorAll('.toggle-active').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const res = await fetch(CONFIG.ENDPOINT, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'toggleProductActive', client_token: clientToken, seller_id: sellerId, product_id: btn.dataset.id, active: btn.dataset.active === 'true' })
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          loadSellerDashboard();
+        } catch (err) {
+          alert('Could not update: ' + err.message);
+          btn.disabled = false;
+        }
+      });
+    });
+
     content.querySelectorAll('.status-select').forEach(sel => {
       sel.addEventListener('change', () => updateSubOrderStatus(sellerId, sel.dataset.subOrder, sel.value));
     });
@@ -290,7 +342,7 @@
     try {
       const res = await fetch(CONFIG.ENDPOINT, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'addProduct', seller_id: sellerId, name, category, price, stock })
+        body: JSON.stringify({ action: 'addProduct', client_token: clientToken, seller_id: sellerId, name, category, price, stock })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -305,7 +357,7 @@
     try {
       const res = await fetch(CONFIG.ENDPOINT, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'updateSubOrderStatus', seller_id: sellerId, sub_order_id: subOrderId, status })
+        body: JSON.stringify({ action: 'updateSubOrderStatus', client_token: clientToken, seller_id: sellerId, sub_order_id: subOrderId, status })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -328,18 +380,36 @@
     sessionStorage.setItem('biscast_admin_key', key);
     msg.innerHTML = '';
     try {
-      const [sellersRes, paymentsRes] = await Promise.all([
+      const [sellersRes, paymentsRes, salesRes] = await Promise.all([
         fetch(`${CONFIG.ENDPOINT}?action=adminSellers&admin_key=${encodeURIComponent(key)}`).then(r => r.json()),
-        fetch(`${CONFIG.ENDPOINT}?action=adminPayments&admin_key=${encodeURIComponent(key)}`).then(r => r.json())
+        fetch(`${CONFIG.ENDPOINT}?action=adminPayments&admin_key=${encodeURIComponent(key)}`).then(r => r.json()),
+        fetch(`${CONFIG.ENDPOINT}?action=salesDashboard&admin_key=${encodeURIComponent(key)}`).then(r => r.json())
       ]);
       if (sellersRes.error) throw new Error(sellersRes.error);
       if (paymentsRes.error) throw new Error(paymentsRes.error);
+      if (salesRes.error) throw new Error(salesRes.error);
       renderPendingSellers(sellersRes.filter(s => s.status === 'pending'), key);
       renderPendingPayments(paymentsRes, key);
+      renderSalesDashboard(salesRes);
       msg.innerHTML = '<p class="msg ok">Queues loaded.</p>';
     } catch (err) {
       msg.innerHTML = `<p class="msg err">${escapeHtml(err.message)}</p>`;
     }
+  }
+
+  function renderSalesDashboard(rows) {
+    const body = document.getElementById('salesDashboardBody');
+    if (rows.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="4">No sales recorded yet.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.team_name)}</td>
+        <td class="num">${r.units_sold}</td>
+        <td class="num">${peso(r.revenue)}</td>
+        <td class="num">${r.order_count}</td>
+      </tr>`).join('');
   }
 
   function renderPendingSellers(sellers, adminKey) {
@@ -361,7 +431,7 @@
         try {
           const res = await fetch(CONFIG.ENDPOINT, {
             method: 'POST', headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action: 'approveSeller', seller_id: btn.dataset.id, admin_key: adminKey })
+            body: JSON.stringify({ action: 'approveSeller', client_token: clientToken, seller_id: btn.dataset.id, admin_key: adminKey })
           });
           const data = await res.json();
           if (data.error) throw new Error(data.error);
@@ -393,7 +463,7 @@
         try {
           const res = await fetch(CONFIG.ENDPOINT, {
             method: 'POST', headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action: 'verifyPayment', sub_order_id: btn.dataset.id, admin_key: adminKey })
+            body: JSON.stringify({ action: 'verifyPayment', client_token: clientToken, sub_order_id: btn.dataset.id, admin_key: adminKey })
           });
           const data = await res.json();
           if (data.error) throw new Error(data.error);
